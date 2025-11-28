@@ -1,0 +1,758 @@
+{
+  "name": "Demo: RAG in n8n",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Upload your data to test RAG",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Upload your file(s)",
+              "fieldType": "file",
+              "acceptFileTypes": ".pdf, .csv",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -128,
+        96
+      ],
+      "id": "f7a656ec-83fc-4ed2-a089-57a9def662b7",
+      "name": "Upload your file here",
+      "webhookId": "82848bc4-5ea2-4e5a-8bb6-3c09b94a8c5d"
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        320,
+        256
+      ],
+      "id": "94aecac0-03f9-4915-932b-d14a2576607b",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "content": "### Readme\nLoad your data into a vector database with the 📚 **Load Data** flow, and then use your data as chat context with the 🐕 **Retriever** flow.\n\n**Quick start**\n1. Click on the `Execute Workflow` button to run the 📚 **Load Data** flow.\n2. Click on `Open Chat` button to run the 🐕 **Retriever** flow. Then ask a question about content from your document(s)\n\n\nFor more info, check [our docs on RAG in n8n](https://docs.n8n.io/advanced-ai/rag-in-n8n/).",
+        "height": 300,
+        "width": 440,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -768,
+        -32
+      ],
+      "typeVersion": 1,
+      "id": "0d07742b-0b36-4c2e-990c-266cbe6e2d4d",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "### 📚 Load Data Flow",
+        "height": 460,
+        "width": 700,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -256,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "d19d04f3-5231-4e47-bed7-9f24a4a8f582",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "memoryKey": {
+          "__rl": true,
+          "value": "vector_store_key",
+          "mode": "list",
+          "cachedResultName": "vector_store_key"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.2,
+      "position": [
+        96,
+        96
+      ],
+      "id": "bf50a11f-ca6a-4e04-a6d2-42fee272b260",
+      "name": "Insert Data to Store"
+    },
+    {
+      "parameters": {
+        "content": "### 🐕 2. Retriever Flow",
+        "height": 460,
+        "width": 760,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        80,
+        112
+      ],
+      "typeVersion": 1,
+      "id": "28bc73a1-e64a-47bf-ac1c-ffe644894ea5",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "### Embeddings\n\nThe Insert and Retrieve operation use the same embedding node.\n\nThis is to ensure that they are using the **exact same embeddings and settings**.\n\nDifferent embeddings might not work at all, or have unintended consequences.\n",
+        "height": 240,
+        "width": 320,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        672,
+        448
+      ],
+      "typeVersion": 1,
+      "id": "0cf8c647-418c-4d1a-8952-766145afca72",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "model": "nomic-embed-text:latest"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [
+        400,
+        528
+      ],
+      "id": "7a69177f-3edd-479d-8402-442f77906741",
+      "name": "Embeddings Ollama",
+      "credentials": {
+        "ollamaApi": {
+          "id": "gsIwPtK6BWtT6fj6",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "mistral:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        672,
+        320
+      ],
+      "id": "64237ebb-5cde-456f-acd2-2bb2872f068f",
+      "name": "Ollama Summarizer Model",
+      "notesInFlow": false,
+      "credentials": {
+        "ollamaApi": {
+          "id": "gsIwPtK6BWtT6fj6",
+          "name": "Ollama account"
+        }
+      },
+      "notes": "You are the Summarizer Agent. Your goal is to produce a concise, accurate, structured summary based ONLY on the document chunks in your input.\n\nIf the input contains a CRITIQUE, you MUST address the issues listed (Critique: {{ $json.revise_request || 'No previous critique.' }}) and revise your previous summary.\n\nOutput MUST be 100% compliant JSON with the following keys and format:\n{\n  \"summary\": \"<The final revised or initial summary text based on the documents.>\",\n  \"key_points\": [\"Point 1\", \"Point 2\", \"Point 3\", \"Point 4\"],\n  \"references\": [\n    {\"chunk_id\": \"Document Chunk ID 1\", \"text\": \"First referenced sentence...\"},\n    {\"chunk_id\": \"Document Chunk ID 2\", \"text\": \"Second referenced sentence...\"}\n  ]\n}"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        96
+      ],
+      "id": "03dd4cce-563f-477f-beef-e48de151f63b",
+      "name": "Parse Summary (Set)"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Judge Agent. Your job:\n1. Check if the summary matches the input documents.\n2. Detect missing points.\n3. Check accuracy and faithfulness.\n4. Return JSON ONLY:\n{\n \"decision\": \"APPROVED\" or \"REVISE\",\n \"issues\": [\"list of errors\"]\n}\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1392,
+        96
+      ],
+      "id": "fcf1c68e-ab76-4005-bcaf-34d87ef0ddf1",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "model": "mistral:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        1392,
+        240
+      ],
+      "id": "8cae85ca-6cc4-45bd-9b4d-389a7b84f831",
+      "name": "Ollama Judge Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "gsIwPtK6BWtT6fj6",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [],
+          "string": [
+            {
+              "value1": "={{$json[\"decision\"]}}",
+              "value2": "APPROVED"
+            }
+          ],
+          "boolean": []
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1744,
+        16
+      ],
+      "id": "0d7d3c24-bd3c-45c4-aff2-38e062afa15f",
+      "name": "If Approved?"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "validated_summary",
+              "value": "={{$json[\"summary\"]}}"
+            },
+            {
+              "name": "validated_key_points",
+              "value": "={{JSON.stringify($json[\"key_points\"] || [])}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        1968,
+        -32
+      ],
+      "id": "3d24132c-3815-442a-890c-09c0152ef34d",
+      "name": "Save Validated Summary (Set)"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "revise_request",
+              "value": "={{$json[\"issues\"] ? JSON.stringify($json[\"issues\"]) : 'Needs revision'}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        1968,
+        192
+      ],
+      "id": "dde945c6-8152-4e1f-bd67-c9aa6f05c830",
+      "name": "Save Revise Note (Set)"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Summarizer Agent. Your goal is to produce a concise, accurate, structured summary **based ONLY on the document chunks in your Query Data Tool.**\n...",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        704,
+        96
+      ],
+      "id": "b57c6dca-4828-473f-bdf6-01e5759a4669",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "knowledge_base",
+        "toolDescription": "You are the Summarizer Agent. Your goal is to produce a concise, accurate, structured summary based ONLY on the document chunks in your input.\n\nIf the input contains a CRITIQUE, you MUST address the issues listed (Critique: {{ $json.revise_request || 'No previous critique.' }}) and revise your previous summary.\n\nOutput MUST be 100% compliant JSON with the following keys and format:\n{\n  \"summary\": \"<The final revised or initial summary text based on the documents.>\",\n  \"key_points\": [\"Point 1\", \"Point 2\", \"Point 3\", \"Point 4\"],\n  \"references\": [\n    {\"chunk_id\": \"Document Chunk ID 1\", \"text\": \"First referenced sentence...\"},\n    {\"chunk_id\": \"Document Chunk ID 2\", \"text\": \"Second referenced sentence...\"}\n  ]\n}",
+        "memoryKey": {
+          "__rl": true,
+          "mode": "list",
+          "value": "vector_store_key"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.2,
+      "position": [
+        800,
+        320
+      ],
+      "id": "09c0db62-5413-440e-8c13-fb6bb66d9b6a",
+      "name": "Query Data Tool"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8debffba-473e-41ff-8c44-515512c773a4",
+              "name": "text",
+              "value": "Summarize the uploaded document now from Query Data Tool.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        96
+      ],
+      "id": "4c485c5e-7517-4a6d-9cc1-18948c79f319",
+      "name": "Set Initial Query"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        2288,
+        -304
+      ],
+      "id": "3de92116-6c26-4eb9-8a62-cf7080835950",
+      "name": "Create Memory Binary (Function)",
+      "functionCode": "const validated_summary = $json[\"validated_summary\"] || $items(\"save-validated-summary-set\")[0]?.json?.validated_summary || '';\nconst key_points = $json[\"validated_key_points\"] ? JSON.parse($json[\"validated_key_points\"]) : ($items(\"save-validated-summary-set\")[0]?.json?.validated_key_points ? JSON.parse($items(\"save-validated-summary-set\")[0].json.validated_key_points) : []);\nconst memory = { validated_summary, key_points, timestamp: new Date().toISOString() };\nconst dataStr = JSON.stringify(memory, null, 2);\nconst b64 = Buffer.from(dataStr).toString('base64');\nreturn [{json: {fileName: 'studyassist_memory.json', mimeType: 'application/json'}, binary: {data: {data: b64, fileName: 'studyassist_memory.json', mimeType: 'application/json'}}}];"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        2544,
+        -176
+      ],
+      "id": "ecd74a9a-90bc-4a7d-acbc-ea6cc52c6d5f",
+      "name": "AI Agent2"
+    },
+    {
+      "parameters": {
+        "model": "mistral:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        -48
+      ],
+      "id": "49824006-81c2-43c0-9f93-e90f29bbc313",
+      "name": "Quiz Agent",
+      "credentials": {
+        "ollamaApi": {
+          "id": "gsIwPtK6BWtT6fj6",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "mistral:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        2384,
+        192
+      ],
+      "id": "2a5e27cf-19d4-45c0-8b8d-43e33cbfde3a",
+      "name": "Flashcard Agent",
+      "credentials": {
+        "ollamaApi": {
+          "id": "gsIwPtK6BWtT6fj6",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        2544,
+        48
+      ],
+      "id": "cd977d65-51d3-4e26-a8f6-f2da4ae6842f",
+      "name": "AI Agent3"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        2624,
+        -400
+      ],
+      "id": "ddc54bc7-8aad-45d1-82e7-12fe49f7bfbd",
+      "name": "Write Memory File"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        3088,
+        -48
+      ],
+      "id": "79a30127-06d4-43de-ae1f-77d9b9f63e93",
+      "name": "AI Agent4"
+    },
+    {
+      "parameters": {
+        "model": "mistral:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        3088,
+        128
+      ],
+      "id": "03eefff2-9125-4618-b0de-12b7cd62b854",
+      "name": "Answer Gen Agent",
+      "credentials": {
+        "ollamaApi": {
+          "id": "gsIwPtK6BWtT6fj6",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        3616,
+        -48
+      ],
+      "id": "8e3ba909-7983-472f-bfc8-87734bc0cdc9",
+      "name": "Write Final Report File"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        3408,
+        -48
+      ],
+      "id": "e67158d5-d591-4cdf-8417-9ddcec23de4b",
+      "name": "Compose Final Report (Function)",
+      "functionCode": "const validated_summary = $items('save-validated-summary-set')[0]?.json?.validated_summary || '';\nconst key_points = $items('save-validated-summary-set')[0]?.json?.validated_key_points ? JSON.parse($items('save-validated-summary-set')[0].json.validated_key_points) : [];\nconst quizzes = $items('quiz-agent').map(i => i.json).filter(Boolean);\nconst flashcards = $items('flashcard-agent').map(i => i.json).filter(Boolean);\nconst answers = $items('answer-gen-agent').map(i=>i.json).filter(Boolean);\nconst report = { summary: validated_summary, key_points, quizzes, flashcards, answers, generated_at: new Date().toISOString() };\nconst reportStr = JSON.stringify(report, null, 2);\nconst b64 = Buffer.from(reportStr).toString('base64');\nreturn [{json: report, binary: { reportFile: { data: b64, fileName: 'studyassist_report.json', mimeType: 'application/json' }}}];"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Upload your file here": {
+      "main": [
+        [
+          {
+            "node": "Insert Data to Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Insert Data to Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Ollama": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Insert Data to Store",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "Query Data Tool",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Summarizer Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Summary (Set)": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Judge Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "If Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Approved?": {
+      "main": [
+        [
+          {
+            "node": "Save Validated Summary (Set)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save Revise Note (Set)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Revise Note (Set)": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Summary (Set)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Data to Store": {
+      "main": [
+        [
+          {
+            "node": "Set Initial Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Data Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Initial Query": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Validated Summary (Set)": {
+      "main": [
+        [
+          {
+            "node": "Create Memory Binary (Function)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AI Agent2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AI Agent3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quiz Agent": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flashcard Agent": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Memory Binary (Function)": {
+      "main": [
+        []
+      ]
+    },
+    "AI Agent2": {
+      "main": [
+        [
+          {
+            "node": "AI Agent4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent3": {
+      "main": [
+        [
+          {
+            "node": "AI Agent4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer Gen Agent": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent4",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent4": {
+      "main": [
+        [
+          {
+            "node": "Compose Final Report (Function)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose Final Report (Function)": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c1e3e33a-b544-47f0-b08e-d59f290b9641",
+  "meta": {
+    "templateId": "rag-starter-template",
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6ec44e6f6909802ab60a5a6ecafcdc48a12760035b08b97dc29cf604bfd09c8c"
+  },
+  "id": "UmNPcL6yyU5LahY4",
+  "tags": []
+}
