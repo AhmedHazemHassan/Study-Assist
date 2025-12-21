@@ -3,17 +3,17 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Role\n\nYou are the Central Orchestrator for the AI Study Assist platform. You manage specialized worker agents to produce a high-quality study pack. Your goal is to evaluate the current state of the study pack and route the workflow to the correct next step.\n\nInput Data\n\nsummary_status: {{ $json.summary_status }}\n\nquiz_status: {{ $json.quiz_status }}\n\nflashcard_status: {{ $json.flashcard_status }}\n\npack_approved: {{ $json.pack_approved }}\n\nlatest_feedback: {{ $json.latest_feedback }}\n\npageContent: {{ $json.pageContent }}\n\nDecision Rules\n\nPriority 1 (Work Generation): Route to the next worker marked \"PENDING\".\n- If summary_status == \"PENDING\" -> next_step: \"SUMMARIZER\"\n- Else if quiz_status == \"PENDING\" -> next_step: \"QUIZ_GEN\"\n- Else if flashcard_status == \"PENDING\" -> next_step: \"FLASHCARD_GEN\"\n\nPriority 2 (Completion): If all requested tasks are \"DONE\" or \"APPROVED\", but the pack is not yet final.\n- If (summary_status != \"PENDING\" AND quiz_status != \"PENDING\" AND flashcard_status != \"PENDING\") AND pack_approved == false -> next_step: \"AWAIT_AUDIT\"\n\nPriority 3 (Finalization):\n- If pack_approved == true -> next_step: \"FINALIZE\"\n\nNote: \"AWAIT_AUDIT\" is a holding state. The physical workflow handles the transition to the Judge.\n\nConstraints:\n\nOutput ONLY valid JSON.\n\nDO NOT include markdown code blocks (outside of this prompt definition), introductory text, or explanations.\n\nThe \"pageContent\" must be passed through exactly as received.\n\nIf \"latest_feedback\" exists, include it in \"instructions_for_worker\" only if it pertains to the selected next_step.\n\nResponse Format:\n\n{\n    \"next_step\": {\n      \"type\": \"string\",\n      \"enum\": [\"SUMMARIZER\", \"QUIZ_GEN\", \"FLASHCARD_GEN\", \"AUDIT\", \"FINALIZE\"],\n      \"description\": \"The discrete ID of the next node to trigger.\"\n    },\n    \"reasoning\": {\n      \"type\": \"string\",\n      \"description\": \"Short explanation of why this step was chosen (for debugging).\"\n    },\n    \"iteration_count\": {\n      \"type\": \"integer\",\n      \"description\": \"Current loop count tracker.\"\n    }\n  },\n}\n",
+        "text": "=Role:\nYou are the Central Orchestrator for the AI Study Assist platform. You manage specialized worker agents to produce a high-quality study pack. Your goal is to evaluate the current state of the study pack and route the workflow to the correct next step.\n\nInput Data:\n\nsummary_status: {{ $json.summary_status }}\n\nquiz_status: {{ $json.quiz_status }}\n\nflashcard_status: {{ $json.flashcard_status }}\n\npack_approved: {{ $json.pack_approved }}\n\nlatest_feedback: {{ $json.latest_feedback }}\n\npageContent: {{ $('Limit').item.json.pageContent }}\n\nDecision Rules:\nPriority 1 (Work Generation): Route to the next worker marked \"PENDING\".\n\nIf summary_status == \"PENDING\" -> next_step: \"SUMMARIZER\"\n\nElse if quiz_status == \"PENDING\" -> next_step: \"QUIZ_GEN\"\n\nElse if flashcard_status == \"PENDING\" -> next_step: \"FLASHCARD_GEN\"\n\nPriority 2 (Quality Check): If all requested tasks are \"DONE\" (but not yet \"APPROVED\"), route to the Judge.\n\nIf all statuses are (DONE, APPROVED, or SKIPPED) AND any status is \"DONE\" AND pack_approved == false -> next_step: \"AWAIT_AUDIT\"\n\nPriority 3 (Finalization):\n\nIf pack_approved == true OR (All statuses are APPROVED or SKIPPED) -> next_step: \"FINALIZE\"\n\nConstraints:\n\nOutput ONLY valid JSON.\n\nNo markdown code blocks, no explanations.\n\nThe \"pageContent\" must be passed through exactly as received.\n\n\"instructions_for_worker\" should contain \"latest_feedback\" only if relevant to the chosen next_step.\n\nResponse Format:\n{\n\"next_step\": \"STRING\",\n\"reasoning\": \"STRING\",\n\"instructions_for_worker\": \"STRING\",\n\"pageContent\": \"STRING\",\n\"iteration_count\": 1\n}",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        -352,
-        1728
+        -384,
+        1792
       ],
       "name": "Supervisor Agent",
-      "id": "aa6508d8-d7d8-48ee-9060-5852b6cbf805"
+      "id": "165ebea3-b0da-40e0-b87e-f2986aec33be"
     },
     {
       "parameters": {
@@ -46,7 +46,7 @@
         1696
       ],
       "name": "Supervisor Router",
-      "id": "4567eb40-91a6-4cd2-bf8d-efc9eb315036"
+      "id": "2a1cb313-fe18-4b70-bfdf-509aafe42e5e"
     },
     {
       "parameters": {
@@ -69,9 +69,9 @@
         -1920,
         1824
       ],
-      "id": "034e9722-906f-4715-a851-018906358b6e",
+      "id": "aa73e7ae-2fae-4cc7-bf2a-ff89fe5cb8c3",
       "name": "Upload your file here",
-      "webhookId": "bf60c9f4-ea54-4238-8df0-aeba2d14c2d2"
+      "webhookId": "09a77d9a-0136-4df0-aa28-93b7050fd8ee"
     },
     {
       "parameters": {
@@ -86,7 +86,7 @@
         1680
       ],
       "typeVersion": 1,
-      "id": "096ba85c-fed5-4a99-a4b7-fe330d56035a",
+      "id": "b6e78dde-adb9-488d-8ca8-547e30e14ce2",
       "name": "Sticky Note - Load Data"
     },
     {
@@ -105,7 +105,7 @@
         -1696,
         1824
       ],
-      "id": "04f8684d-bd62-4bdb-b626-3c7e7d5feb6d",
+      "id": "de637d31-9ec8-4bc1-9855-f74166424c5b",
       "name": "RAG Knowledge Base (Insert)"
     },
     {
@@ -113,7 +113,7 @@
         "content": "### 🧑‍⚖️ Judge Agent (Independent)\nHas DIRECT access to RAG Knowledge Base.\nEvaluates ALL agent outputs for accuracy.",
         "height": 180,
         "width": 320,
-        "color": 5
+        "color": 4
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
@@ -121,7 +121,7 @@
         1648
       ],
       "typeVersion": 1,
-      "id": "22e7478e-3947-43db-8009-5693e166a1ab",
+      "id": "9424675f-0f6a-44ef-9c21-399d064dbc15",
       "name": "Sticky Note - Judge"
     },
     {
@@ -134,7 +134,7 @@
         -672,
         2032
       ],
-      "id": "dda4576c-6435-4d7e-bf59-73de7c9eb3a5",
+      "id": "6dfb6391-0154-4890-92ee-7066a7ef6f7c",
       "name": "Embeddings Ollama",
       "credentials": {
         "ollamaApi": {
@@ -154,7 +154,7 @@
         768,
         1824
       ],
-      "id": "d583f09c-b233-40f9-8fca-f2c630f0a938",
+      "id": "a1a3fb41-6908-4a2c-8cc9-f579176962ab",
       "name": "Ollama Summarizer LLM",
       "credentials": {
         "ollamaApi": {
@@ -174,7 +174,7 @@
         944,
         1824
       ],
-      "id": "e70da041-816f-48df-be43-2ba088dd3633",
+      "id": "3050cf19-eac1-404d-9157-0c33a0ac22d2",
       "name": "Summarizer Memory"
     },
     {
@@ -203,7 +203,7 @@
         560,
         1680
       ],
-      "id": "137fdfdb-1c02-4673-97a1-187775cdbca5",
+      "id": "f4165907-2259-4f2f-be39-e7b2912a09e2",
       "name": "Set Initial Query"
     },
     {
@@ -216,13 +216,13 @@
         1312,
         1584
       ],
-      "id": "c09b203c-f284-4b9c-ae32-ed0840b57cf6",
+      "id": "7885e632-cd3a-4928-a8d8-c28a5309e7a0",
       "name": "Parse Summary Output"
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Role\n\nYou are the Quality Auditor and Hallucination Detector for the AI Study Assist platform. Your job is to perform a \"Faithfulness Audit\" on all generated content. You must evaluate the output of any active agent (Summarizer, Quiz Gen, or Flashcard Gen) against the retrieved source material.\n\nInput Context\n\nYou will receive the full available context. You must judge only the components that are present and marked for review:\n\nsource_chunks: The ground-truth text {{ $('RAG Knowledge Base (Insert)').item.json.pageContent }}\n\nagent_outputs:\n\nSummarizer: {{ $json.summarizer_agent_output.output }}\n\nQuiz: {{ $json.quiz_agent_output.output }}\n\nFlashcards: {{ $json.FlashCard_agent_output.output }}\n\ntarget_review: The specific agent(s) currently requesting validation (based on state_extractor_output).\n\nEvaluation Protocol\n\nDynamic Scope: If only one agent output is provided, judge it individually. If multiple outputs are provided (Global Review), judge them all.\n\nFact Verification: Cross-reference every claim in the provided outputs against the source_chunks.\n\nHallucination Check: If a fact is not explicitly stated or logically implied by the source, it is a hallucination.\n\nFormat Integrity: Ensure each component follows its specific JSON structure and length constraints.\n\nDecision Logic\n\nAPPROVED: The content under review is 100% faithful and accurate.\n\nREVISE: There is a hallucination, formatting error, or contradiction found in any of the reviewed components.\n\nThreshold: If the faithfulness_score is below 0.9, the decision MUST be REVISE.\n\nResponse Requirements\n\nSTRICT JSON ONLY: No markdown, no code blocks, no introductory text.\n\nRouting: revision_instructions must be prefixed with the agent name (e.g., \"FLASHCARD_GEN: ...\").\n\nResponse Schema\n\n{\n\"decision\": \"APPROVED\" | \"REVISE\",\n\"decisions\": {\n\"summary\": \"APPROVED\" | \"REVISE\" | \"SKIPPED\",\n\"quiz\": \"APPROVED\" | \"REVISE\" | \"SKIPPED\",\n\"flashcards\": \"APPROVED\" | \"REVISE\" | \"SKIPPED\"\n},\n\"faithfulness_score\": 0.0 to 1.0,\n\"critique\": \"Concise explanation of what passed or failed.\",\n\"revision_instructions\": \"Specific, actionable feedback for the worker agent(s) to fix errors.\"\n}\n\nStrict Rules\n\nDo not use outside knowledge. Only judge based on the provided source_chunks.\n\nIf an output is empty or not requested for review, mark its individual status as \"SKIPPED\".\n\nEnsure consistent naming: Use SUMMARIZER, QUIZ_GEN, and FLASHCARD_GEN in instructions.",
+        "text": "=Role\n\nYou are the Quality Auditor and Hallucination Detector for the AI Study Assist platform. Your job is to perform a \"Faithfulness Audit\" on all generated content. You must evaluate the output of any active agent (Summarizer, Quiz Gen, or Flashcard Gen) against the retrieved source material.\n\nInput Context\n\nYou will receive the full available context. You must judge only the components that are present and marked for review:\n\nsource_chunks: The ground-truth text {{ $('RAG Knowledge Base (Insert)').item.json.pageContent }}\n\nagent_outputs:\n\nSummarizer: {{ $json.summarizer_agent_output }}\n\nQuiz: {{ $json.quiz_agent_output }}\n\nFlashcards: {{ $json.flashcard_agent_output }}\n\ntarget_review: The specific agent(s) currently requesting validation (based on state_extractor_output).\n\nEvaluation Protocol\n\nDynamic Scope: If only one agent output is provided, judge it individually. If multiple outputs are provided), judge them all but ensure you provide a faithfulness_score for each one.\n\nFact Verification: Cross-reference every claim in the provided outputs against the source_chunks.\n\nHallucination Check: If a fact is not explicitly stated or logically implied by the source, it is a hallucination.\n\nFormat Integrity: Ensure each component follows its specific JSON structure and length constraints.\n\nDecision Logic\n\nAPPROVED: The content under review is 100% faithful and accurate.\n\nREVISE: There is a hallucination, formatting error, or contradiction found in any of the reviewed components.\n\nThreshold: If the faithfulness_score is below 0.7, the decision MUST be REVISE.\n\nResponse Requirements\n\nSTRICT JSON ONLY: No markdown, no code blocks, no introductory text.\n\nRouting: revision_instructions and faithfulness_score must be prefixed with the agent name (e.g., \"FLASHCARD_GEN: ...\").\n\nResponse Schema\n\n{\n\"decision\": \"APPROVED\" | \"REVISE\",\n\"decisions\": {\n\"summary\": \"APPROVED\" | \"REVISE\" | \"SKIPPED\",\n\"quiz\": \"APPROVED\" | \"REVISE\" | \"SKIPPED\",\n\"flashcards\": \"APPROVED\" | \"REVISE\" | \"SKIPPED\"\n},\n\"faithfulness_score\": 0.0 to 1.0,\n\"critique\": \"Concise explanation of what passed or failed.\",\n\"revision_instructions\": \"Specific, actionable feedback for the worker agent(s) to fix errors.\"\n}\n\nStrict Rules\n\nDo not use outside knowledge. Only judge based on the provided source_chunks.\n\nIf an output is empty or not requested for review, mark its individual status as \"SKIPPED\".\n\nEnsure consistent naming: Use SUMMARIZER, QUIZ_GEN, and FLASHCARD_GEN in instructions.",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -231,7 +231,7 @@
         1600,
         1168
       ],
-      "id": "5ba77b65-e5df-40b5-a0b6-22b0a2ae44b5",
+      "id": "df3293cb-6f56-4d4d-97e7-c3d9e4cec784",
       "name": "Judge Agent"
     },
     {
@@ -245,7 +245,7 @@
         1536,
         1552
       ],
-      "id": "10d9d385-471d-4040-a74c-6150b0a49c72",
+      "id": "016db758-3234-409f-b9e6-b2e94541f4d4",
       "name": "Ollama Judge LLM",
       "credentials": {
         "ollamaApi": {
@@ -253,27 +253,6 @@
           "name": "Ollama account"
         }
       }
-    },
-    {
-      "parameters": {
-        "mode": "retrieve-as-tool",
-        "toolName": "knowledge_base_judge",
-        "toolDescription": "Use this tool to retrieve original document chunks to verify the accuracy of generated content.  Query this to fact-check summaries, quizzes, and flashcards.",
-        "memoryKey": {
-          "__rl": true,
-          "mode": "list",
-          "value": "vector_store_key"
-        },
-        "topK": 30
-      },
-      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
-      "typeVersion": 1.2,
-      "position": [
-        1840,
-        1552
-      ],
-      "id": "b9742f2c-f181-4dcb-aabd-48cb752c7b6f",
-      "name": "RAG Tool (Judge - Direct Access)"
     },
     {
       "parameters": {
@@ -287,7 +266,7 @@
         784,
         1200
       ],
-      "id": "1e44c1fb-6af0-41d7-8643-f9095965742e",
+      "id": "0a9567ea-e971-4286-8d13-91fb89cde347",
       "name": "Quiz Agent"
     },
     {
@@ -302,7 +281,7 @@
         768,
         2032
       ],
-      "id": "33faadce-b0a1-4a2e-8fdf-c6e0d4f3f6fd",
+      "id": "801462b4-5a56-432e-a501-3bd46b81526d",
       "name": "Flashcard Agent"
     },
     {
@@ -316,7 +295,7 @@
         720,
         2272
       ],
-      "id": "f95c4058-ac1d-4fb1-a18f-02f1e57a9969",
+      "id": "5832064e-df84-4922-b8a4-5b7d527a9617",
       "name": "Ollama Flashcard LLM",
       "credentials": {
         "ollamaApi": {
@@ -333,10 +312,10 @@
       "type": "n8n-nodes-base.writeBinaryFile",
       "typeVersion": 1,
       "position": [
-        576,
-        2464
+        448,
+        2208
       ],
-      "id": "10e81830-3fb4-4894-8a15-e7a2204b67c7",
+      "id": "20fe3e64-826e-4170-9082-9dadcde1bfa6",
       "name": "Write Final Report File"
     },
     {
@@ -350,7 +329,7 @@
         656,
         1440
       ],
-      "id": "7f46fbe3-d072-4ab0-8166-4773c6ffdf7e",
+      "id": "dbd5c3f7-7ee2-4ed7-a59f-e2a719fea4fa",
       "name": "Ollama Flashcard LLM1",
       "credentials": {
         "ollamaApi": {
@@ -370,7 +349,7 @@
         -1680,
         2016
       ],
-      "id": "61976b61-9154-41c1-a143-fb18565896a1",
+      "id": "92771797-a8df-4f82-a923-ee7be6c3681e",
       "name": "Default Data Loader"
     },
     {
@@ -386,7 +365,7 @@
         1648
       ],
       "typeVersion": 1,
-      "id": "6264f217-f1ca-45fc-957e-de4d884a320f",
+      "id": "b9317bc1-4f36-49e1-a787-d63094f16cee",
       "name": "Sticky Note - Retriever"
     },
     {
@@ -401,7 +380,7 @@
         800,
         1584
       ],
-      "id": "c5815dba-f82c-4a57-8530-44bf9ae5743c",
+      "id": "7fbcc64b-c3f8-47f6-82bc-21f50f38e933",
       "name": "Summarizer Agent"
     },
     {
@@ -412,7 +391,7 @@
         -1200,
         1792
       ],
-      "id": "5dfe44d5-c588-4adc-8636-eba2040deda9",
+      "id": "4d759e66-537b-41bf-9b68-3c8e51c7a864",
       "name": "Limit"
     },
     {
@@ -423,23 +402,23 @@
       "type": "n8n-nodes-base.convertToFile",
       "typeVersion": 1.1,
       "position": [
-        336,
-        2464
+        208,
+        2208
       ],
-      "id": "6163fb45-161f-4bed-9412-628e28a20bfb",
+      "id": "87e6317f-f63f-455c-a75b-55901d14f587",
       "name": "Convert to File"
     },
     {
       "parameters": {
-        "functionCode": "/**\n * Utility to safely retrieve the first item from a specific node\n */\nfunction getFirstItem(nodeName) {\n  try {\n    const arr = $items(nodeName);\n    if (!arr || !Array.isArray(arr) || arr.length === 0) return null;\n    return arr[0];\n  } catch (e) {\n    return null;\n  }\n}\n\n// 1. Extract Summary\n// We check the \"Save Validated Summary\" first (The final version).\n// Fallback to \"Summarizer\" if the validation step was skipped.\nconst validatedSummaryItem = getFirstItem('Save Validated Summary');\nconst rawSummarizerItem = getFirstItem('Summarizer');\n\nconst summary = validatedSummaryItem?.json?.summary \n             || rawSummarizerItem?.json?.output \n             || rawSummarizerItem?.json?.text \n             || \"No summary was generated.\";\n\n// 2. Extract Quiz output\nconst quizItem = getFirstItem('Quiz Agent');\nconst quizRaw = quizItem?.json?.output;\n\n// 3. Extract Flashcard output\nconst flashItem = getFirstItem('Flashcard Agent');\nconst flashRaw = flashItem?.json?.output;\n\nlet quiz = null;\nlet flashcards = null;\n\n// Parse Quiz JSON\nif (quizRaw) {\n  try {\n    quiz = typeof quizRaw === 'string' ? JSON.parse(quizRaw) : quizRaw;\n  } catch (e) {\n    quiz = { error: 'Quiz JSON parse failed', raw: quizRaw };\n  }\n}\n\n// Parse Flashcards JSON\nif (flashRaw) {\n  try {\n    flashcards = typeof flashRaw === 'string' ? JSON.parse(flashRaw) : flashRaw;\n  } catch (e) {\n    flashcards = { error: 'Flashcard JSON parse failed', raw: flashRaw };\n  }\n}\n\nreturn [\n  {\n    json: {\n      summary: summary, // Main summary text\n      quiz: quiz,\n      flashcards: flashcards,\n      metadata: {\n        summary_source: validatedSummaryItem ? 'validated' : (rawSummarizerItem ? 'raw' : 'none'),\n        has_content: !!(summary || quiz || flashcards)\n      }\n    },\n  },\n];"
+        "functionCode": "/**\n * Utility to safely retrieve the first item from a specific node\n */\nfunction getFirstItem(nodeName) {\n  try {\n    const arr = $(nodeName).all();\n    if (!arr || !Array.isArray(arr) || arr.length === 0) return null;\n    return arr[0];\n  } catch (e) {\n    return null;\n  }\n}\n\n/**\n * Utility to handle content that might be JSON or Plain Text\n */\nfunction smartParse(rawContent, typeLabel) {\n  if (!rawContent) return null;\n  \n  // If it's already an object, return it\n  if (typeof rawContent === 'object') return rawContent;\n\n  try {\n    // Attempt to clean the string if it contains markdown blocks\n    const cleanJson = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();\n    return JSON.parse(cleanJson);\n  } catch (e) {\n    // Fallback: If it's not JSON, treat it as structured text for the PDF/Binary conversion\n    return {\n      type: \"structured_text\",\n      title: typeLabel,\n      content: rawContent.trim()\n    };\n  }\n}\n\n// 1. Extract Summary\n// Checking all possible paths including the State Manager's output\nconst stateManagerItem = getFirstItem('State Manager');\nconst validatedSummaryItem = getFirstItem('Save Validated Summary');\nconst rawSummarizerItem = getFirstItem('Summarizer');\n\nconst summary = validatedSummaryItem?.json?.summary \n             || stateManagerItem?.json?.summarizer_agent_output\n             || rawSummarizerItem?.json?.output \n             || rawSummarizerItem?.json?.text \n             || \"No summary was generated.\";\n\n// 2. Extract Quiz output\nconst quizItem = getFirstItem('Quiz Agent');\nconst quizRaw = quizItem?.json?.output || quizItem?.json?.text;\n\n// 3. Extract Flashcard output\nconst flashItem = getFirstItem('Flashcard Agent');\nconst flashRaw = flashItem?.json?.output || flashItem?.json?.text;\n\n// 4. Process outputs using Smart Parse\nconst quiz = smartParse(quizRaw, \"Quiz\");\nconst flashcards = smartParse(flashRaw, \"Flashcards\");\n\nreturn [\n  {\n    json: {\n      summary: summary,\n      quiz: quiz,\n      flashcards: flashcards,\n      metadata: {\n        summary_source: validatedSummaryItem ? 'validated' : (rawSummarizerItem ? 'raw' : 'state'),\n        has_content: !!(summary !== \"No summary was generated.\" || quiz || flashcards),\n        generated_at: new Date().toISOString()\n      }\n    },\n  },\n];"
       },
-      "id": "00e2ac2d-ba42-408c-b478-fdb018ed1158",
+      "id": "9cb0f1bf-0158-43b2-99fc-9d8f346ecbbc",
       "name": "Build Response",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        416,
-        2240
+        288,
+        1984
       ]
     },
     {
@@ -453,7 +432,7 @@
         816,
         1440
       ],
-      "id": "692848fe-2844-4841-a9d8-8f16568f1588",
+      "id": "ccfbb25f-31ed-491e-b703-5c8260cbc8e1",
       "name": "Simple Memory"
     },
     {
@@ -467,7 +446,7 @@
         -16,
         2048
       ],
-      "id": "fcff9988-16eb-4e00-834d-b241bbb9cd65",
+      "id": "1450e26e-405c-41e9-b68b-d18008bb36d7",
       "name": "Supervisor Memory"
     },
     {
@@ -481,7 +460,7 @@
         -240,
         2048
       ],
-      "id": "038b04cf-e43e-4c28-8990-2770b2f52743",
+      "id": "2ee7ea93-053b-4c9a-9e5f-252a444f8d97",
       "name": "Ollama Supervisor LLM",
       "credentials": {
         "ollamaApi": {
@@ -498,11 +477,12 @@
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.3,
       "position": [
-        1696,
+        1744,
         1552
       ],
-      "id": "0e487d9c-9d49-42f7-8079-3c7de5088240",
-      "name": "Judge Memory"
+      "id": "07c3545e-24f7-44ae-bbc9-bf665ed75c58",
+      "name": "Judge Memory",
+      "disabled": true
     },
     {
       "parameters": {
@@ -535,7 +515,7 @@
         1568,
         848
       ],
-      "id": "75c75c78-a684-40d6-ace1-29053645a831",
+      "id": "e47e3c1a-b9e9-4dbe-9be1-8b0e85394698",
       "name": "If"
     },
     {
@@ -548,12 +528,12 @@
         1312,
         848
       ],
-      "id": "30335f15-e447-4d8b-8a11-2f8ec1b60d81",
+      "id": "bca23873-8c1f-4b4c-b7cb-e8d7e1c619bb",
       "name": "Smart Aggregator"
     },
     {
       "parameters": {
-        "jsCode": "/**\n * n8n Code Node (JavaScript)\n * Mode: Run Once for All Items\n */\n\n// 1. Access the incoming data correctly\n// Since it's \"Run Once for All Items\", we access the first item in the input array\nconst items = $input.all();\nif (items.length === 0) return []; // Guard against empty input\n\nconst input_data = items[0].json;\n\n// 2. Extract User Preferences\nconst prefs = input_data.user_preferences || {\n    \"summary\": true,\n    \"quiz\": true,\n    \"flashcards\": true\n};\n\n// 3. Initialize Statuses based on Preferences // change to check at first if thier values are done or not\nlet current_summary = prefs.summary ? \"PENDING\" : \"SKIPPED\";\nlet current_quiz = prefs.quiz ? \"PENDING\" : \"SKIPPED\";\nlet current_flashcards = prefs.flashcards ? \"PENDING\" : \"SKIPPED\";\nlet pack_approved = false;\nlet latest_feedback = \"\";\n\n// 4. EXTRACTOR LOOKBACK\ntry {\n    // Reference the 'Sate Extractor' node's data\n    // const extractor_data = $('Sate Extractor').first().json;\n    const last_step = $('Sate Extractor').first().json.next_step//extractor_data.next_step;\n\n    if (last_step === \"SUMMARIZER\") {\n        current_summary = \"DONE\";\n    } else if (last_step === \"QUIZ_GEN\") {\n        current_quiz = \"DONE\";\n    } else if (last_step === \"FLASHCARD_GEN\") {\n        current_flashcards = \"DONE\";\n    } else if (last_step === \"FINALIZE\") {\n        pack_approved = true;\n    } else {\n        latest_feedback = last_step || \"\";\n    }\n} catch (e) {\n    // Node not found or hasn't run yet\n}\n\n// 5. JUDGE OVERRIDE\ntry {\n    const judge_output = $('Judge Agent').first().json;\n    if (judge_output && judge_output.decisions) {\n        const decisions = judge_output.decisions;\n\n        const checkRevision = (currentStatus, key) => {\n            const val = decisions[key];\n            if (val === \"REVISE\") return \"PENDING\";\n            if (val === \"APPROVED\") return \"APPROVED\";\n            return currentStatus;\n        };\n\n        current_summary = checkRevision(current_summary, \"summary\");\n        current_quiz = checkRevision(current_quiz, \"quiz\");\n        current_flashcards = checkRevision(current_flashcards, \"flashcards\");\n\n        latest_feedback = judge_output.revision_instructions || latest_feedback;\n    }\n} catch (e) {\n    // Judge node data not available\n}\n\n// 6. Final State Construction\nlet content = input_data.pageContent || \"\";\n\nconst new_state = {\n    summary_status: current_summary,\n    quiz_status: current_quiz,\n    flashcard_status: current_flashcards,\n    pack_approved: pack_approved,\n    latest_feedback: latest_feedback,\n    pageContent: content,\n    user_preferences: prefs\n};\n\n// Return as an array of items\nreturn [{ json: new_state }];"
+        "jsCode": "/**\n * n8n Code Node (JavaScript)\n * Logic: Data-Driven State Management\n * This version determines status by checking if actual content exists.\n */\n\nconst items = $input.all();\nif (items.length === 0) return []; \n\nconst input_data = items[0].json;\n\n// 1. HELPER: Check if content is valid/non-empty\nconst hasContent = (data) => {\n    if (!data) return false;\n    if (typeof data === 'string' && data.trim().length > 0) return true;\n    if (Array.isArray(data) && data.length > 0) return true;\n    if (typeof data === 'object' && Object.keys(data).length > 0) return true;\n    return false;\n};\n\n// 2. EXTRACT PREFERENCES\nconst prefs = input_data.user_preferences || { \"summary\": true, \"quiz\": true, \"flashcards\": true };\n\n// 3. DETERMINE STATUS BASED ON DATA PRESENCE (The \"Cumulative\" Logic)\n// If content exists, it's DONE. Otherwise, check if it's even requested (PENDING vs SKIPPED)\nlet current_summary = hasContent($input.first().json.summarizer_agent_output) ? \"DONE\" : (prefs.summary ? \"PENDING\" : \"SKIPPED\");\nlet current_quiz = hasContent($input.first().json.quiz_agent_output) ? \"DONE\" : (prefs.quiz ? \"PENDING\" : \"SKIPPED\");\nlet current_flashcards = hasContent($input.first().json.flashcard_agent_output) ? \"DONE\" : (prefs.flashcards ? \"PENDING\" : \"SKIPPED\");\n\nlet latest_feedback = input_data.latest_feedback || \"\";\nlet pack_approved = input_data.pack_approved || false;\n\n// 4. JUDGE OVERRIDE (Revisions)\n// Adjusted logic to specifically look for \"APPROVED\" or \"REVISE\" strings\n// 4. JUDGE OVERRIDE (Authoritative)\ntry {\n  let judge_data = null;\n\n  try {\n    const judgeNode = $('Judge Agent').first().json;\n    judge_data = judgeNode.output || judgeNode;\n  } catch (e) {}\n\n  if (typeof judge_data === \"string\") {\n    try {\n      judge_data = JSON.parse(judge_data);\n    } catch (e) {\n      judge_data = null;\n    }\n  }\n\n  if (judge_data && judge_data.decisions) {\n    const d = judge_data.decisions;\n\n    if (d.summary === \"APPROVED\") current_summary = \"APPROVED\";\n    if (d.quiz === \"APPROVED\") current_quiz = \"APPROVED\";\n    if (d.flashcards === \"APPROVED\") current_flashcards = \"APPROVED\";\n\n    if (d.summary === \"REVISE\") current_summary = \"PENDING\";\n    if (d.quiz === \"REVISE\") current_quiz = \"PENDING\";\n    if (d.flashcards === \"REVISE\") current_flashcards = \"PENDING\";\n\n    if (\n      (d.summary === \"APPROVED\" || d.summary === \"SKIPPED\") &&\n      (d.quiz === \"APPROVED\" || d.quiz === \"SKIPPED\") &&\n      (d.flashcards === \"APPROVED\" || d.flashcards === \"SKIPPED\")\n    ) {\n      pack_approved = true;\n    }\n\n    if (judge_data.revision_instructions) {\n      latest_feedback =\n        typeof judge_data.revision_instructions === \"string\"\n          ? judge_data.revision_instructions\n          : JSON.stringify(judge_data.revision_instructions);\n    }\n  }\n} catch (e) {}\n\n\n\n// 5. FINAL STATE CONSTRUCTION\nconst new_state = {\n    // ...input_data, // Maintains summary_text, quiz_data, etc.\n    // summary_status: current_summary,\n    // quiz_status: current_quiz,\n    // flashcard_status: current_flashcards,\n    // pack_approved: pack_approved,\n    // latest_feedback: latest_feedback,\n    // last_sync: new Date().toISOString()\n    summary_status: current_summary,\n    quiz_status: current_quiz,\n    flashcard_status: current_flashcards,\n    pack_approved: pack_approved,\n    latest_feedback: latest_feedback,\n    last_sync: new Date().toISOString(),\n\n    // carry forward immutable data only\n    pageContent: input_data.pageContent,\n    user_preferences: input_data.user_preferences\n};\n\nreturn [{ json: new_state }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -561,7 +541,7 @@
         -800,
         1792
       ],
-      "id": "516c93ed-b4aa-4a5f-8099-4b07bb3c6fb2",
+      "id": "37affeee-0e15-44e5-94b5-2a03bfa3bf58",
       "name": "State Manager"
     },
     {
@@ -575,7 +555,7 @@
         -32,
         1728
       ],
-      "id": "26054121-079d-419a-8d62-6825f5d0fca3",
+      "id": "d334bfbf-d04b-44fa-8a96-5b0555e48a57",
       "name": "Sate Extractor"
     },
     {
@@ -596,7 +576,7 @@
         1200,
         1840
       ],
-      "id": "01efa419-6c04-44dc-8c8a-f4ea717f5403",
+      "id": "82da77d8-579f-4b6a-9014-4ef07e2328e5",
       "name": "RAG Tool (Working agents)"
     },
     {
@@ -610,7 +590,7 @@
         944,
         2272
       ],
-      "id": "cadf77f5-6aef-4f21-9692-79a9f7368972",
+      "id": "404e2711-516d-4fc1-a9a3-014763f1ac8d",
       "name": "Flash Card Memory"
     }
   ],
@@ -689,11 +669,6 @@
             "index": 0
           },
           {
-            "node": "RAG Tool (Judge - Direct Access)",
-            "type": "ai_embedding",
-            "index": 0
-          },
-          {
             "node": "RAG Tool (Working agents)",
             "type": "ai_embedding",
             "index": 0
@@ -762,17 +737,6 @@
           {
             "node": "Judge Agent",
             "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "RAG Tool (Judge - Direct Access)": {
-      "ai_tool": [
-        [
-          {
-            "node": "Judge Agent",
-            "type": "ai_tool",
             "index": 0
           }
         ]
@@ -989,6 +953,11 @@
             "node": "Flashcard Agent",
             "type": "ai_tool",
             "index": 0
+          },
+          {
+            "node": "Judge Agent",
+            "type": "ai_tool",
+            "index": 0
           }
         ]
       ]
@@ -1007,6 +976,7 @@
   },
   "pinData": {},
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "6ec44e6f6909802ab60a5a6ecafcdc48a12760035b08b97dc29cf604bfd09c8c"
   }
 }
