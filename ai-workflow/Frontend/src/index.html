@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Document Processor</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="app-container">
+  <h1>📄 AI Document Processor</h1>
+  <p class="subtitle">Upload a PDF, run AI tasks, then give feedback.</p>
+
+  <!-- Upload -->
+  <div class="card">
+    <h2>1. Upload PDF</h2>
+    <input type="file" id="pdfFile" accept=".pdf" />
+    <button onclick="createJob()">Create Job</button>
+  </div>
+
+  <!-- Tasks -->
+  <div class="card">
+    <h2>2. Choose Tasks</h2>
+    <label><input type="checkbox" value="summary"> Summary</label><br />
+    <label><input type="checkbox" value="quiz"> Quiz</label><br />
+    <label><input type="checkbox" value="flashcards"> Flashcards</label><br />
+    <label><input type="checkbox" value="full_pipeline"> Full Pipeline</label>
+  </div>
+
+  <!-- Run -->
+  <div class="card">
+    <h2>3. Run Job</h2>
+    <button onclick="runJob()">Run Analysis</button>
+  </div>
+
+  <!-- Status -->
+  <div class="card">
+    <h2>Status</h2>
+    <pre id="statusBox">Waiting...</pre>
+  </div>
+
+  <!-- Result -->
+  <div class="card">
+    <h2>Result</h2>
+    <pre id="resultBox">No result yet.</pre>
+  </div>
+
+  <!-- Chatbot Feedback -->
+  <div class="card">
+    <h2>Feedback Chat (for Judge Agent)</h2>
+
+    <div id="chatBox" class="chat-box"></div>
+
+    <div class="chat-input-row">
+      <input
+        type="text"
+        id="chatInput"
+        placeholder="Type your feedback..."
+        onkeydown="handleChatKey(event)"
+      />
+      <button onclick="sendChatMessage()">Send</button>
+    </div>
+
+    <button class="judge-btn" onclick="sendConversationToJudge()">
+      Send Conversation to Judge
+    </button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
