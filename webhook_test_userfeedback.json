@@ -1,0 +1,1226 @@
+{
+  "name": "webhook_test_userfeedback",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Role:\nYou are the Central Orchestrator for the AI Study Assist platform. You manage specialized worker agents to produce a high-quality study pack. Your goal is to evaluate the current state of the study pack and route the workflow to the correct next step.\n\nInput Data:\n\nsummary_status: {{ $json.summary_status }}\n\nquiz_status: {{ $json.quiz_status }}\n\nflashcard_status: {{ $json.flashcard_status }}\n\npack_approved: {{ $json.pack_approved }}\n\nlatest_feedback: {{ $json.latest_feedback }}\n\npageContent: {{ $('Limit').item.json.pageContent }}\n\nDecision Rules:\nPriority 1 (Work Generation): Route to the next worker marked \"PENDING\".\n\nIf summary_status == \"PENDING\" -> next_step: \"SUMMARIZER\"\n\nElse if quiz_status == \"PENDING\" -> next_step: \"QUIZ_GEN\"\n\nElse if flashcard_status == \"PENDING\" -> next_step: \"FLASHCARD_GEN\"\n\nPriority 2 (Quality Check): If all requested tasks are \"DONE\" (but not yet \"APPROVED\"), route to the Judge.\n\nIf all statuses are (DONE, APPROVED, or SKIPPED) AND any status is \"DONE\" AND pack_approved == false -> next_step: \"AWAIT_AUDIT\"\n\nPriority 3 (Finalization):\n\nIf pack_approved == true OR (All statuses are APPROVED or SKIPPED) -> next_step: \"FINALIZE\"\n\nConstraints:\n\nOutput ONLY valid JSON.\n\nNo markdown code blocks, no explanations.\n\nThe \"pageContent\" must be passed through exactly as received.\n\n\"instructions_for_worker\" should contain \"latest_feedback\" only if relevant to the chosen next_step.\n\nResponse Format:\n{\n\"next_step\": \"STRING\",\n\"reasoning\": \"STRING\",\n\"instructions_for_worker\": \"STRING\",\n\"pageContent\": \"STRING\",\n\"iteration_count\": 1\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -976,
+        800
+      ],
+      "name": "Supervisor Agent",
+      "id": "ece1cec1-eb25-4e6b-b94c-4dee989b04c5"
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.next_step }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "SUMMARIZER"
+            },
+            {
+              "value2": "QUIZ_GEN",
+              "output": 1
+            },
+            {
+              "value2": "FLASHCARD_GEN",
+              "output": 2
+            },
+            {
+              "value2": "FINALIZE",
+              "output": 3
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        768
+      ],
+      "name": "Supervisor Router",
+      "id": "8ea862e7-1256-4e60-8467-ff690a4b0088"
+    },
+    {
+      "parameters": {
+        "formTitle": "Upload your data to test RAG",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Upload your file(s)",
+              "fieldType": "file",
+              "acceptFileTypes": ".pdf, .csv",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -2304,
+        704
+      ],
+      "id": "42432a12-f045-44bf-83e1-2446404e9212",
+      "name": "Upload your file here",
+      "webhookId": "09a77d9a-0136-4df0-aa28-93b7050fd8ee",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "content": "### 📚 Load Data Flow\nUpload PDF/CSV → Chunk → Embed → Store in Vector DB",
+        "height": 460,
+        "width": 700,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2400,
+        608
+      ],
+      "typeVersion": 1,
+      "id": "cae3a221-bd41-4a59-8c5e-39afb403228b",
+      "name": "Sticky Note - Load Data"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "memoryKey": {
+          "__rl": true,
+          "value": "vector_store_key",
+          "mode": "list",
+          "cachedResultName": "vector_store_key"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.2,
+      "position": [
+        -1776,
+        784
+      ],
+      "id": "925657c3-103d-47e5-93f1-6306ba3de463",
+      "name": "RAG Knowledge Base (Insert)"
+    },
+    {
+      "parameters": {
+        "content": "### 🧑‍⚖️ Judge Agent (Independent)\nHas DIRECT access to RAG Knowledge Base.\nEvaluates ALL agent outputs for accuracy.",
+        "height": 180,
+        "width": 320,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        320,
+        128
+      ],
+      "typeVersion": 1,
+      "id": "863816e3-6dca-4456-a45c-4793f423e945",
+      "name": "Sticky Note - Judge"
+    },
+    {
+      "parameters": {
+        "model": "nomic-embed-text:latest"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [
+        -1776,
+        1120
+      ],
+      "id": "2bc5efc5-345e-4cfd-81eb-4020a74baed2",
+      "name": "Embeddings Ollama",
+      "credentials": {
+        "ollamaApi": {
+          "id": "T4pK6kf0sVpOeVsI",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "mistral:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -128,
+        912
+      ],
+      "id": "49ffab95-fc9d-4334-9d86-f06593d49140",
+      "name": "Ollama Summarizer LLM",
+      "credentials": {
+        "ollamaApi": {
+          "id": "T4pK6kf0sVpOeVsI",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "summarizer_session"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -32,
+        912
+      ],
+      "id": "66b515cf-b537-405a-8c8b-c7b235682e89",
+      "name": "Summarizer Memory"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8debffba-473e-41ff-8c44-515512c773a4",
+              "name": "text",
+              "value": "Retrieve and summarize the main topics, key concepts, and important details from the uploaded document.",
+              "type": "string"
+            },
+            {
+              "id": "78cb1c41-c5d7-42a2-a48c-aa0041bd5832",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -256,
+        752
+      ],
+      "id": "234f1b3d-fc4e-429b-8f5b-d5b2765f3536",
+      "name": "Set Initial Query"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        128,
+        752
+      ],
+      "id": "dc549ff0-c4d4-46cd-bfff-d285cd3f6318",
+      "name": "Parse Summary Output"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Role\n\nYou are the Quality Auditor and Hallucination Detector for the AI Study Assist platform. Your job is to perform a \"Faithfulness Audit\" on all generated content. You must evaluate the output of any active agent (Summarizer, Quiz Gen, or Flashcard Gen) against the retrieved source material.\n\nInput Context\n\nYou will receive the full available context. You must judge only the components that are present and marked for review:\n\nsource_chunks: The ground-truth text {{ $('RAG Knowledge Base (Insert)').item.json.pageContent }}\n\nagent_outputs:\n\nSummarizer: {{ $json.summarizer_agent_output }}\n\nQuiz: {{ $json.quiz_agent_output }}\n\nFlashcards: {{ $json.flashcard_agent_output }}\n\ntarget_review: The specific agent(s) currently requesting validation (based on state_extractor_output).\n\nEvaluation Protocol\n\nDynamic Scope: If only one agent output is provided, judge it individually. If multiple outputs are provided), judge them all but ensure you provide a faithfulness_score for each one.\n\nFact Verification: Cross-reference every claim in the provided outputs against the source_chunks.\n\nHallucination Check: If a fact is not explicitly stated or logically implied by the source, it is a hallucination.\n\nFormat Integrity: Ensure each component follows its specific JSON structure and length constraints.\n\nDecision Logic\n\nAPPROVED: The content under review is 100% faithful and accurate.\n\nREVISE: There is a hallucination, formatting error, or contradiction found in any of the reviewed components.\n\nThreshold: If the faithfulness_score is below 0.7, the decision MUST be REVISE.\n\nResponse Requirements\n\nSTRICT JSON ONLY: No markdown, no code blocks, no introductory text.\n\nRouting: revision_instructions and faithfulness_score must be prefixed with the agent name (e.g., \"FLASHCARD_GEN: ...\").\n\nResponse Schema\n\n{\n\"decision\": \"APPROVED\" | \"REVISE\",\n\"decisions\": {\n\"summary\": \"APPROVED\" | \"REVISE\" | \"SKIPPED\",\n\"quiz\": \"APPROVED\" | \"REVISE\" | \"SKIPPED\",\n\"flashcards\": \"APPROVED\" | \"REVISE\" | \"SKIPPED\"\n},\n\"faithfulness_score\": 0.0 to 1.0,\n\"critique\": \"Concise explanation of what passed or failed.\",\n\"revision_instructions\": \"Specific, actionable feedback for the worker agent(s) to fix errors.\"\n}\n\nStrict Rules\n\nDo not use outside knowledge. Only judge based on the provided source_chunks.\n\nIf an output is empty or not requested for review, mark its individual status as \"SKIPPED\".\n\nEnsure consistent naming: Use SUMMARIZER, QUIZ_GEN, and FLASHCARD_GEN in instructions.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        240
+      ],
+      "id": "4868d30b-8c92-4209-945a-5f5945195669",
+      "name": "Judge Agent"
+    },
+    {
+      "parameters": {
+        "model": "mistral:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        560,
+        416
+      ],
+      "id": "f601b519-6726-46e8-85b0-fc6f988209cc",
+      "name": "Ollama Judge LLM",
+      "credentials": {
+        "ollamaApi": {
+          "id": "T4pK6kf0sVpOeVsI",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Quiz Agent.\n\nBased on the following retrived content, generate a quiz with 5 multiple-choice questions.\n\n--- Retrived Content ---\n{{ $('RAG Knowledge Base (Insert)').item.json.pageContent }}\n\n--- OUTPUT FORMAT (Plain Text) ---\nQ1: [Question text]\na) Option A\nb) Option B\nc) Option C\nd) Option D\nCorrect Answer: [letter]\n\nQ2: .. .\n(Continue for all 5 questions)",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -128,
+        480
+      ],
+      "id": "470bc03e-35c3-4ef2-9864-8f48e924fe0c",
+      "name": "Quiz Agent"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Flashcard Generator Agent.\n\nBased on the following retrived content, generate 5 flashcards.\n\n--- Retrived Content ---\n{{ $('RAG Knowledge Base (Insert)').item.json.pageContent }}\n\n--- OUTPUT FORMAT (Plain Text) ---\n\n=== FLASHCARD 1 ===\nFRONT: [Question or term]\nBACK: [Answer or definition]\n\n=== FLASHCARD 2 ===\nFRONT: .. .\nBACK: ...\n\n(Continue for all 5 flashcards) ",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -128,
+        1056
+      ],
+      "id": "01c672cf-a5da-416d-9cd1-26481344ed5c",
+      "name": "Flashcard Agent"
+    },
+    {
+      "parameters": {
+        "model": "mistral:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        1216
+      ],
+      "id": "cf75ab99-9da0-4843-8e05-f15357962a0f",
+      "name": "Ollama Flashcard LLM",
+      "credentials": {
+        "ollamaApi": {
+          "id": "T4pK6kf0sVpOeVsI",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fileName": "studyassist_report.txt",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        1344
+      ],
+      "id": "d74d0fbc-5f53-4a27-b0d1-24e0997efd54",
+      "name": "Write Final Report File"
+    },
+    {
+      "parameters": {
+        "model": "mistral:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -128,
+        624
+      ],
+      "id": "b8f20edc-140f-4087-970d-2e20451d5747",
+      "name": "Ollama Flashcard LLM1",
+      "credentials": {
+        "ollamaApi": {
+          "id": "T4pK6kf0sVpOeVsI",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        -1728,
+        944
+      ],
+      "id": "68a8bbb8-1563-4ee7-9bb4-b3d92e93f38e",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Summarizer Agent. \n\n## CRITICAL INSTRUCTIONS - FOLLOW EXACTLY\n\n**STEP 1 - MANDATORY TOOL CALL:**\nBefore writing ANY summary, you MUST call the `knowledge_base` tool with a search query related to the user's request. \nDO NOT skip this step.  DO NOT write a summary without first calling the tool. \nIf you do not call the tool first, you can take it directly from {{ $('RAG Knowledge Base (Insert)').item.json.pageContent }}.\n\n**STEP 2 - PROCESS RETRIEVED CHUNKS:**\nAfter the tool returns document chunks, read them carefully. \n- If chunks are returned: Base your summary ONLY on these chunks.\n- If no chunks are returned: Respond with \"ERROR: No document content found in knowledge base.\"\n\n**STEP 3 - HANDLE CRITIQUES (if any):**\nCritique to address: {{ $json.revise_request || 'None' }}\nIf there is a critique, revise your summary to fix the listed issues.\n\n**STEP 4 - OUTPUT FORMAT (Plain Text Only):**\n\n--- SUMMARY ---\n[Write 2-4 paragraphs summarizing the document content]\n\n--- KEY POINTS ---\n• [Key point 1 from the documents]\n• [Key point 2 from the documents]\n• [Key point 3 from the documents]\n• [Key point 4 from the documents]\n\n--- REFERENCES ---\n• [Chunk ID]: \"[Exact quote from that chunk]\"\n• [Chunk ID]: \"[Another exact quote]\"\n\n## CONSTRAINTS\n\nDO NOT include markdown code blocks (outside of this prompt definition), introductory text, or explanations.\n\n## REMEMBER\n- You MUST call `knowledge_base` tool FIRST\n- You MUST NOT use prior knowledge\n- You MUST NOT output placeholder text like \"<Your summary here>\"\n- Output real content based on retrieved documents only {{ $('RAG Knowledge Base (Insert)').item.json.pageContent }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -128,
+        752
+      ],
+      "id": "f24db471-3502-4977-95f9-82fd530317f7",
+      "name": "Summarizer Agent"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        -1392,
+        800
+      ],
+      "id": "d49e70c3-ac1b-4325-99cc-62dc1da5b29e",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -432,
+        1264
+      ],
+      "id": "d12ae75f-e7b0-4b04-85c2-6ae9cda59c47",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "functionCode": "/**\n * Utility to safely retrieve the first item from a specific node\n */\nfunction getFirstItem(nodeName) {\n  try {\n    const arr = $(nodeName).all();\n    if (!arr || !Array.isArray(arr) || arr.length === 0) return null;\n    return arr[0];\n  } catch (e) {\n    return null;\n  }\n}\n\n/**\n * Utility to handle content that might be JSON or Plain Text\n */\nfunction smartParse(rawContent, typeLabel) {\n  if (!rawContent) return null;\n  \n  // If it's already an object, return it\n  if (typeof rawContent === 'object') return rawContent;\n\n  try {\n    // Attempt to clean the string if it contains markdown blocks\n    const cleanJson = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();\n    return JSON.parse(cleanJson);\n  } catch (e) {\n    // Fallback: If it's not JSON, treat it as structured text for the PDF/Binary conversion\n    return {\n      type: \"structured_text\",\n      title: typeLabel,\n      content: rawContent.trim()\n    };\n  }\n}\n\n// 1. Extract Summary\n// Checking all possible paths including the State Manager's output\nconst stateManagerItem = getFirstItem('State Manager');\nconst validatedSummaryItem = getFirstItem('Save Validated Summary');\nconst rawSummarizerItem = getFirstItem('Summarizer');\n\nconst summary = validatedSummaryItem?.json?.summary \n             || stateManagerItem?.json?.summarizer_agent_output\n             || rawSummarizerItem?.json?.output \n             || rawSummarizerItem?.json?.text \n             || \"No summary was generated.\";\n\n// 2. Extract Quiz output\nconst quizItem = getFirstItem('Quiz Agent');\nconst quizRaw = quizItem?.json?.output || quizItem?.json?.text;\n\n// 3. Extract Flashcard output\nconst flashItem = getFirstItem('Flashcard Agent');\nconst flashRaw = flashItem?.json?.output || flashItem?.json?.text;\n\n// 4. Process outputs using Smart Parse\nconst quiz = smartParse(quizRaw, \"Quiz\");\nconst flashcards = smartParse(flashRaw, \"Flashcards\");\n\nreturn [\n  {\n    json: {\n      summary: summary,\n      quiz: quiz,\n      flashcards: flashcards,\n      metadata: {\n        summary_source: validatedSummaryItem ? 'validated' : (rawSummarizerItem ? 'raw' : 'state'),\n        has_content: !!(summary !== \"No summary was generated.\" || quiz || flashcards),\n        generated_at: new Date().toISOString()\n      }\n    },\n  },\n];"
+      },
+      "id": "dd83b743-e969-42c5-bdca-cf566e2029e2",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        1056
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "quiz_memory"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -32,
+        624
+      ],
+      "id": "666178d0-ecff-4a69-b418-397cde588870",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "Supervisor_session"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -880,
+        992
+      ],
+      "id": "826598c7-429e-48c0-8a89-d66b4a79a5b8",
+      "name": "Supervisor Memory"
+    },
+    {
+      "parameters": {
+        "model": "mistral:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -976,
+        992
+      ],
+      "id": "f3495305-39cc-4e92-91d7-f688cf6ca18e",
+      "name": "Ollama Supervisor LLM",
+      "credentials": {
+        "ollamaApi": {
+          "id": "T4pK6kf0sVpOeVsI",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "Judge_session"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        448
+      ],
+      "id": "adecb808-3886-4a14-8917-d5859230646a",
+      "name": "Judge Memory",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4958ccf2-5c2a-4c40-9489-f865315270a3",
+              "leftValue": "={{ $json.trigger_judge }}",
+              "rightValue": "={{true}}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        384,
+        240
+      ],
+      "id": "fc0a976c-2555-4df6-acdd-8c325929db3b",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Smart Aggregator: Prepares the payload and handles the 'trigger_judge' logic.\n * Uses string literals for node access to ensure n8n optimization.\n */\n\n// 1. Initialize the storage for results\nlet aggregatedData = {\n  source_chunks: \"\",\n  summarizer_agent_output: null,\n  quiz_agent_output: null,\n  flashcard_agent_output: null,\n  sate_extractor_output: null,\n  trigger_judge: false\n};\n\n// Track how many agents successfully returned data\nlet completedCount = 0;\nconst totalRequired = 2; // Total number of agents we are waiting for\n\n// 2. Extract inputs safely using string literals\ntry {\n  const node = $('Summarizer Agent').first();\n  if (node && node.json) {\n    aggregatedData.summarizer_agent_output = node.json.output || node.json;\n    completedCount++;\n  }\n} catch (e) {}\n\ntry {\n  const node = $('Quiz Agent').first();\n  if (node && node.json) {\n    aggregatedData.quiz_agent_output = node.json.output || node.json;\n    completedCount++;\n  }\n} catch (e) {}\n\ntry {\n  const node = $('Flashcard Agent').first();\n  if (node && node.json) {\n    aggregatedData.flashcard_agent_output = node.json.output || node.json;\n    completedCount++;\n  }\n} catch (e) {}\n\ntry {\n  const node = $('Sate Extractor').first();\n  if (node && node.json) {\n    aggregatedData.sate_extractor_output = node.json.output || node.json;\n    completedCount++;\n  }\n} catch (e) {}\n\n// Extract source content (usually doesn't count towards the agent completion total)\ntry {\n  aggregatedData.source_chunks = $('RAG Knowledge Base (Insert)').first().json.pageContent || \"\";\n} catch (e) {\n  aggregatedData.source_chunks = \"Source content unavailable\";\n}\n\n// 3. Final Logic: Trigger Judge only if all required tasks are done\nif (completedCount === totalRequired) {\n  aggregatedData.trigger_judge = true;\n}\n\n// 4. Return the aggregated data for the following IF node\nreturn [{\n  json: aggregatedData\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        240
+      ],
+      "id": "ee1e44f2-b1cb-4150-899e-9153a2540924",
+      "name": "Smart Aggregator"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * n8n Code Node (JavaScript)\n * Logic: Data-Driven State Management\n * This version determines status by checking if actual content exists.\n */\n\nconst items = $input.all();\nif (items.length === 0) return []; \n\nconst input_data = items[0].json;\n\n// 1. HELPER: Check if content is valid/non-empty\nconst hasContent = (data) => {\n    if (!data) return false;\n    if (typeof data === 'string' && data.trim().length > 0) return true;\n    if (Array.isArray(data) && data.length > 0) return true;\n    if (typeof data === 'object' && Object.keys(data).length > 0) return true;\n    return false;\n};\n\n// 2. EXTRACT PREFERENCES\nconst prefs = input_data.user_preferences || { \"summary\": true, \"quiz\": false, \"flashcards\": false };\n\n// 3. DETERMINE STATUS BASED ON DATA PRESENCE (The \"Cumulative\" Logic)\n// If content exists, it's DONE. Otherwise, check if it's even requested (PENDING vs SKIPPED)\nlet current_summary = hasContent($input.first().json.summarizer_agent_output) ? \"DONE\" : (prefs.summary ? \"PENDING\" : \"SKIPPED\");\nlet current_quiz = hasContent($input.first().json.quiz_agent_output) ? \"DONE\" : (prefs.quiz ? \"PENDING\" : \"SKIPPED\");\nlet current_flashcards = hasContent($input.first().json.flashcard_agent_output) ? \"DONE\" : (prefs.flashcards ? \"PENDING\" : \"SKIPPED\");\n\nlet latest_feedback = input_data.latest_feedback || \"\";\nlet pack_approved = input_data.pack_approved || false;\n\n// 4. JUDGE OVERRIDE (Revisions)\n// Adjusted logic to specifically look for \"APPROVED\" or \"REVISE\" strings\n// 4. JUDGE OVERRIDE (Authoritative)\ntry {\n  let judge_data = null;\n\n  try {\n    const judgeNode = $('Judge Agent').first().json;\n    judge_data = judgeNode.output || judgeNode;\n  } catch (e) {}\n\n  if (typeof judge_data === \"string\") {\n    try {\n      judge_data = JSON.parse(judge_data);\n    } catch (e) {\n      judge_data = null;\n    }\n  }\n\n  if (judge_data && judge_data.decisions) {\n    const d = judge_data.decisions;\n\n    if (d.summary === \"APPROVED\") current_summary = \"APPROVED\";\n    if (d.quiz === \"APPROVED\") current_quiz = \"APPROVED\";\n    if (d.flashcards === \"APPROVED\") current_flashcards = \"APPROVED\";\n\n    if (d.summary === \"REVISE\") current_summary = \"PENDING\";\n    if (d.quiz === \"REVISE\") current_quiz = \"PENDING\";\n    if (d.flashcards === \"REVISE\") current_flashcards = \"PENDING\";\n\n    if (\n      (d.summary === \"APPROVED\" || d.summary === \"SKIPPED\") &&\n      (d.quiz === \"APPROVED\" || d.quiz === \"SKIPPED\") &&\n      (d.flashcards === \"APPROVED\" || d.flashcards === \"SKIPPED\")\n    ) {\n      pack_approved = true;\n    }\n\n    if (judge_data.revision_instructions) {\n      latest_feedback =\n        typeof judge_data.revision_instructions === \"string\"\n          ? judge_data.revision_instructions\n          : JSON.stringify(judge_data.revision_instructions);\n    }\n  }\n} catch (e) {}\n\n\n\n// 5. FINAL STATE CONSTRUCTION\nconst new_state = {\n    // ...input_data, // Maintains summary_text, quiz_data, etc.\n    // summary_status: current_summary,\n    // quiz_status: current_quiz,\n    // flashcard_status: current_flashcards,\n    // pack_approved: pack_approved,\n    // latest_feedback: latest_feedback,\n    // last_sync: new Date().toISOString()\n    summary_status: current_summary,\n    quiz_status: current_quiz,\n    flashcard_status: current_flashcards,\n    pack_approved: pack_approved,\n    latest_feedback: latest_feedback,\n    last_sync: new Date().toISOString(),\n\n    // carry forward immutable data only\n    pageContent: input_data.pageContent,\n    user_preferences: input_data.user_preferences\n};\n\nreturn [{ json: new_state }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1168,
+        800
+      ],
+      "id": "461975d5-6165-457a-8b98-61639baa62b3",
+      "name": "State Manager"
+    },
+    {
+      "parameters": {
+        "jsCode": "const outputItems = [];\n\nfor (const item of $input.all()) {\n  const incomingData = item.json || {};\n  const rawOutput = incomingData.output || '';\n  \n  let nextStep = \"FINALIZE\"; // Default next step\n  let reasoning = \"No reasoning provided\"; // Default reasoning\n  let instructionsForWorker = \"\"; // Default instructions\n  let iterationCount = 0;\n  let parseError = false;\n  \n  try {\n    if (rawOutput) {\n      let cleanedOutput = rawOutput.trim();\n      \n      // Remove Markdown Code Blocks (if they exist)\n      if (cleanedOutput.startsWith(\"```\")) {\n        const lines = cleanedOutput.split('\\n');\n        if (lines[0].toLowerCase().includes(\"json\") || lines[0] === \"```\") {\n          cleanedOutput = lines.slice(1, -1).join('\\n').trim();\n        }\n      }\n      \n      // Fix invalid backslash escapes\n      cleanedOutput = cleanedOutput.replace(/\\\\(?![/\"\\\\bfnrt]|u[0-9a-fA-F]{4})/g, '');\n      \n      const data = JSON.parse(cleanedOutput);\n      \n      // Extract next_step value and normalize the case to upper\n      if (data.next_step !== undefined) {\n        if (typeof data.next_step === 'object' && data.next_step.enum && Array.isArray(data.next_step.enum)) {\n          nextStep = data.next_step.enum[0].toUpperCase(); // Convert to uppercase for consistency\n        } else {\n          nextStep = data.next_step.toUpperCase(); // Convert to uppercase for consistency\n        }\n      }\n      \n      // Extract reasoning, if available\n      if (data.reasoning !== undefined) {\n        if (typeof data.reasoning === 'object' && data.reasoning.description) {\n          reasoning = data.reasoning.description;\n        } else {\n          reasoning = data.reasoning;\n        }\n      }\n      \n      // Extract iteration count if available\n      if (data.iteration_count !== undefined) {\n        if (typeof data.iteration_count === 'object' && data.iteration_count.description) {\n          iterationCount = parseInt(data.iteration_count.description);\n        } else {\n          iterationCount = data.iteration_count;\n        }\n      }\n      \n      // Set instructions_for_worker if relevant feedback exists\n      if (data.latest_feedback && (nextStep === \"SUMMARIZER\" || nextStep === \"QUIZ_GEN\" || nextStep === \"FLASHCARD_GEN\")) {\n        instructionsForWorker = data.latest_feedback;\n      }\n    } else {\n      reasoning = \"Input 'output' field was empty.\";\n    }\n  } catch (e) {\n    reasoning = `PARSE ERROR: ${e.message}`;\n    parseError = true;\n  }\n\n  // Construct the final output\n  outputItems.push({\n    json: {\n      next_step: nextStep,\n      reasoning: reasoning,\n      instructions_for_worker: instructionsForWorker,\n      pageContent: incomingData.pageContent || \"\", // Ensure pageContent is passed through correctly\n      iteration_count: iterationCount,\n      is_debug_error: parseError,\n      original_agent_response: rawOutput\n    }\n  });\n}\n\nreturn outputItems;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        800
+      ],
+      "id": "57b49b51-8df1-4673-8bfb-5f398f0ea7f1",
+      "name": "Sate Extractor"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "knowledge_base",
+        "toolDescription": "Search the uploaded documents to find relevant information.  Use this to retrieve text chunks before summarizing.",
+        "memoryKey": {
+          "__rl": true,
+          "mode": "list",
+          "value": "vector_store_key"
+        },
+        "topK": 30
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        1120
+      ],
+      "id": "8277e586-acaa-452d-bfc5-c6f0b37e49f5",
+      "name": "RAG Tool (Working agents)"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "flashCard_memory"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -16,
+        1232
+      ],
+      "id": "401c12d5-098a-4a1c-a2f4-9c2158e92102",
+      "name": "Flash Card Memory"
+    },
+    {
+      "parameters": {
+        "content": "### 🐕 Retriever & Orchestration Flow\nSummarizer → Judge (with RAG access) → Orchastenator → Quiz/Flashcard/Answer",
+        "height": 456,
+        "width": 1128,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1632,
+        608
+      ],
+      "typeVersion": 1,
+      "id": "6fb5bf9a-ef34-4f8c-a591-1d758159fd39",
+      "name": "Sticky Note - Retriever"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * n8n Code Node (JavaScript)\n * Logic: Data-Driven State Management\n * This version handles user feedback and routes it to the appropriate agents.\n * Additionally, it integrates feedback for the Judge Agent.\n */\n\nconst items = $input.all();\nif (items.length === 0) return []; \n\nconst input_data = items[0].json;\n\n// 1. HELPER: Check if content is valid/non-empty\nconst hasContent = (data) => {\n    if (!data) return false;\n    if (typeof data === 'string' && data.trim().length > 0) return true;\n    if (Array.isArray(data) && data.length > 0) return true;\n    if (typeof data === 'object' && Object.keys(data).length > 0) return true;\n    return false;\n};\n\n// 2. EXTRACT PREFERENCES\nconst prefs = input_data.user_preferences || { \"summary\": true, \"quiz\": true, \"flashcards\": true };\n\n// 3. DETERMINE STATUS BASED ON DATA PRESENCE (The \"Cumulative\" Logic)\n// If content exists, it's DONE. Otherwise, check if it's even requested (PENDING vs SKIPPED)\nlet current_summary = hasContent($input.first().json.summarizer_agent_output) ? \"DONE\" : (prefs.summary ? \"PENDING\" : \"SKIPPED\");\nlet current_quiz = hasContent($input.first().json.quiz_agent_output) ? \"DONE\" : (prefs.quiz ? \"PENDING\" : \"SKIPPED\");\nlet current_flashcards = hasContent($input.first().json.flashcard_agent_output) ? \"DONE\" : (prefs.flashcards ? \"PENDING\" : \"SKIPPED\");\n\nlet latest_feedback_text = input_data.latest_feedback || \"\";  // This is the user feedback (whole text)\nlet pack_approved = input_data.pack_approved || false;\n\n// 4. JUDGE OVERRIDE (Revisions)\n// Adjusted logic to specifically look for \"APPROVED\" or \"REVISE\" strings\ntry {\n  let judge_data = null;\n\n  try {\n    const judgeNode = $('Judge Agent').first().json;\n    judge_data = judgeNode.output || judgeNode;\n  } catch (e) {}\n\n  if (typeof judge_data === \"string\") {\n    try {\n      judge_data = JSON.parse(judge_data);\n    } catch (e) {\n      judge_data = null;\n    }\n  }\n\n  if (judge_data && judge_data.decisions) {\n    const d = judge_data.decisions;\n\n    if (d.summary === \"APPROVED\") current_summary = \"APPROVED\";\n    if (d.quiz === \"APPROVED\") current_quiz = \"APPROVED\";\n    if (d.flashcards === \"APPROVED\") current_flashcards = \"APPROVED\";\n\n    if (d.summary === \"REVISE\") current_summary = \"PENDING\";\n    if (d.quiz === \"REVISE\") current_quiz = \"PENDING\";\n    if (d.flashcards === \"REVISE\") current_flashcards = \"PENDING\";\n\n    if (\n      (d.summary === \"APPROVED\" || d.summary === \"SKIPPED\") &&\n      (d.quiz === \"APPROVED\" || d.quiz === \"SKIPPED\") &&\n      (d.flashcards === \"APPROVED\" || d.flashcards === \"SKIPPED\")\n    ) {\n      pack_approved = true;\n    }\n\n    if (judge_data.revision_instructions) {\n      latest_feedback_text =\n        typeof judge_data.revision_instructions === \"string\"\n          ? judge_data.revision_instructions\n          : JSON.stringify(judge_data.revision_instructions);\n    }\n  }\n} catch (e) {}\n\n// 5. HANDLE USER FEEDBACK FROM CHATBOT (No Tokenization, just one line)\nlet feedback_tokens = {\n  summary: \"\",\n  quiz: \"\",\n  flashcards: \"\"\n};\n\n// 6. UPDATE PREFERENCES BASED ON USER FEEDBACK\nif (latest_feedback_text) {\n  const feedback = latest_feedback_text.toLowerCase();\n\n  if (feedback.includes(\"summary\")) {\n    prefs.summary = true;  // Enable summary processing\n    feedback_tokens.summary = latest_feedback_text;  // Full feedback text for summary\n  } else {\n    prefs.summary = false; // Disable summary if no feedback\n  }\n\n  if (feedback.includes(\"quiz\")) {\n    prefs.quiz = true;  // Enable quiz processing\n    feedback_tokens.quiz = latest_feedback_text;  // Full feedback text for quiz\n  } else {\n    prefs.quiz = false; // Disable quiz if no feedback\n  }\n\n  if (feedback.includes(\"flashcard\")) {\n    prefs.flashcards = true;  // Enable flashcard processing\n    feedback_tokens.flashcards = latest_feedback_text;  // Full feedback text for flashcards\n  } else {\n    prefs.flashcards = false; // Disable flashcards if no feedback\n  }\n}\n\n// 7. FINAL STATE CONSTRUCTION\nconst new_state = {\n    summary_status: current_summary,\n    summary_user_feedback: feedback_tokens.summary || null,\n    \n    quiz_status: current_quiz,\n    quiz_user_feedback: feedback_tokens.quiz || null,\n\n    flashcard_status: current_flashcards,\n    flashcards_user_feedback: feedback_tokens.flashcards || null,\n\n    pack_approved: pack_approved,\n    latest_feedback: latest_feedback_text,\n    last_sync: new Date().toISOString(),\n\n    // Carry forward immutable data only\n    pageContent: input_data.pageContent,\n    user_preferences: prefs\n};\n\n// 8. RETURN OUTPUT WITH USER FEEDBACK FOR AGENTS\n// Pass the feedback and agent statuses to be used in the workflow for further revisions by agents\nreturn [{\n  json: {\n    ...new_state,\n    summary_user_feedback: feedback_tokens.summary,\n    quiz_user_feedback: feedback_tokens.quiz,\n    flashcards_user_feedback: feedback_tokens.flashcards\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1168,
+        944
+      ],
+      "id": "511a2865-09e8-4653-b508-7a8ece65d34c",
+      "name": "state manager 2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Role:\n\nYou are a Feedback Processor for the AI Study Assist platform. Your task is to analyze the user feedback and process it in a way that updates the status of the relevant agents based on their feedback. If the user mentions a specific agent, reset its status to PENDING and include the user feedback as a prompt for that agent. If the feedback refers to multiple agents, process each one individually.\n\nInstructions:\n\nCapture Feedback:\n\nThe user will provide feedback in the form of a message (e.g., \"summary needs to have emojis\").\n\nDo not ask the user for any additional information. Simply analyze the feedback text provided.\n\nuser feedback input: {{ $json.chatInput }}\n\nFeedback Analysis:\n\nAnalyze the feedback to identify the agent(s) being mentioned. For example:\n\nIf the user mentions \"summary,\" it refers to the Summarizer Agent.\n\nIf the user mentions \"quiz,\" it refers to the Quiz Generator Agent.\n\nIf the user mentions \"flashcards,\" it refers to the Flashcard Agent.\n\nDecide Agent Status:\n\nFor each agent mentioned in the feedback:\n\nSet its status to PENDING if the feedback implies a need for revision or update (e.g., \"add fun emojis to the summary\").\n\nThe feedback text should be passed as a prompt to the agent.\n\nIf no feedback is provided for an agent, mark it as SKIPPED.\n\nOutput Format:\n\nThe output will consist of the agent’s status and the user feedback specific to that agent.\n\nThe feedback should be tokenized and processed for each agent separately.\n\nOutput Format (strictly):\n\n{\n  \"summary\": \"PENDING\" | \"APPROVED\" | \"SKIPPED\",\n  \"summary_user_feedback\": \"User feedback text related to summary, e.g., 'add fun emojis to the summary'\",\n  \"quiz\": \"PENDING\" | \"APPROVED\" | \"SKIPPED\",\n  \"quiz_user_feedback\": \"User feedback text related to quiz, e.g., 'add fun emojis to the quizzes'\",\n  \"flashcards\": \"PENDING\" | \"APPROVED\" | \"SKIPPED\",\n  \"flashcards_user_feedback\": \"User feedback text related to flashcards, e.g., 'add fun emojis to the flashcards'\"\n}\n\n\nRules:\n\nIf the user feedback refers to summary, set the summary status to PENDING and include the feedback text under summary_user_feedback.\n\nIf the user feedback refers to quiz, set the quiz status to PENDING and include the feedback text under quiz_user_feedback.\n\nIf the user feedback refers to flashcards, set the flashcards status to PENDING and include the feedback text under flashcards_user_feedback.\n\nIf there is no feedback for an agent, mark its status as SKIPPED.\n\nTokenization:\n\nSplit the user feedback into distinct feedback points based on the sentences. For example, if the user says:\n\n\"Add fun emojis to the summary. Add fun emojis to the quiz.\"\n\nTokenize it into:\n\n\"Add fun emojis to the summary\" → it is for Summary because said summary in the feedback.\n\n\" the quiz have unrelated question to the pdf uploaded\" → it is for quiz.\n\n\" the flashcard have repeated cards\" → it is for flashcards.\n\nNo Feedback:\n\nIf the user does not provide feedback on a specific agent, it will be skipped, and its status will be marked as SKIPPED.\n\nFinal Processing:\n\nThe processed feedback will be sent to the State Manager to update the workflow accordingly.\n\nSample Output:\n\nthis is an example scenario (user can add another feedback than the ones mentioned) if the user provides the feedback for example : \"Add fun emojis to the summary and add more context to the quiz\":\n\n{\n  \"summary\": \"PENDING\",\n  \"summary_user_feedback\": \"Add fun emojis to the summary\",\n  \"quiz\": \"PENDING\",\n  \"quiz_user_feedback\": \"Add more context to the quiz\",\n  \"flashcards\": \"SKIPPED\",\n  \"flashcards_user_feedback\": null\n}\n\n\n(user can add another feedback than the ones mentioned) If the user provides the feedback: \"Add fun emojis to the flashcards\":\n\n{\n  \"summary\": \"SKIPPED\",\n  \"summary_user_feedback\": null,\n  \"quiz\": \"SKIPPED\",\n  \"quiz_user_feedback\": null,\n  \"flashcards\": \"PENDING\",\n  \"flashcards_user_feedback\": \"Add fun emojis to the flashcards\"\n}\n\n\nStrict Constraints:\n\nNo thinking or reasoning responses.\n\nNo explanations or additional text in the output.\n\nOnly output the exact JSON structure specified above.\n\nDo not use any external knowledge. or add any thinking just provide the json file output.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -1776,
+        1296
+      ],
+      "id": "b3262dd3-57cc-43af-b89b-0a92cb484144",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "mistral:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -1776,
+        1504
+      ],
+      "id": "3eb23ed8-d3c1-40bb-a5ea-3e986d13365d",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "T4pK6kf0sVpOeVsI",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        -1488,
+        960
+      ],
+      "id": "df58df29-ff52-4277-b3af-edeceb5f7527",
+      "name": "Limit1"
+    },
+    {
+      "parameters": {
+        "path": "afe76a43-00c6-4152-ac82-b3947899f029",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1952,
+        1296
+      ],
+      "id": "bd71ee17-3107-4400-a5c7-5b573aa59ce8",
+      "name": "Webhook",
+      "webhookId": "afe76a43-00c6-4152-ac82-b3947899f029"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -80,
+        1456
+      ],
+      "id": "7b6df40f-e6b6-4552-9aef-2461c85c8760",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1328,
+        1168
+      ],
+      "id": "d1ce8ca3-d938-4825-9687-94bc447fa1b8",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "path": "894812b7-3745-4b25-b89c-cd1d42cf490d",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2304,
+        912
+      ],
+      "id": "c1bb1301-eded-4a17-b656-a050d71e3e3d",
+      "name": "Webhook1",
+      "webhookId": "894812b7-3745-4b25-b89c-cd1d42cf490d"
+    }
+  ],
+  "pinData": {
+    "Upload your file here": [
+      {
+        "json": {
+          "Upload your file(s)": [
+            {
+              "filename": "mlops_lecture_2_foundations.pdf",
+              "mimetype": "application/pdf",
+              "size": 3924437
+            }
+          ],
+          "submittedAt": "2025-12-22T04:53:45.600+02:00",
+          "formMode": "test"
+        },
+        "binary": {
+          "Upload_your_file_s_": {
+            "mimeType": "application/pdf",
+            "fileType": "pdf",
+            "fileExtension": "pdf",
+            "data": "filesystem-v2",
+            "fileName": "mlops_lecture_2_foundations.pdf",
+            "id": "filesystem-v2:workflows/wJp3tQKemY1Ja0pL/executions/temp/binary_data/154980f7-a2f5-46b0-8d7b-a74f4c46ed95",
+            "fileSize": "3.92 MB"
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Supervisor Agent": {
+      "main": [
+        [
+          {
+            "node": "Sate Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supervisor Router": {
+      "main": [
+        [
+          {
+            "node": "Set Initial Query",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Quiz Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Flashcard Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload your file here": {
+      "main": [
+        [
+          {
+            "node": "RAG Knowledge Base (Insert)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG Knowledge Base (Insert)": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Limit1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Ollama": {
+      "ai_embedding": [
+        [
+          {
+            "node": "RAG Knowledge Base (Insert)",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "RAG Tool (Working agents)",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Summarizer LLM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Summarizer Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarizer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Summarizer Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Initial Query": {
+      "main": [
+        [
+          {
+            "node": "Summarizer Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Summary Output": {
+      "main": [
+        [
+          {
+            "node": "Smart Aggregator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Judge Agent": {
+      "main": [
+        [
+          {
+            "node": "State Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Judge LLM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Judge Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quiz Agent": {
+      "main": [
+        [
+          {
+            "node": "Smart Aggregator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flashcard Agent": {
+      "main": [
+        [
+          {
+            "node": "Smart Aggregator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Flashcard LLM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Flashcard Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Flashcard LLM1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Quiz Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "RAG Knowledge Base (Insert)",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarizer Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Summary Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "State Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Write Final Report File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Quiz Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supervisor Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Supervisor Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Supervisor LLM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Supervisor Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Judge Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Judge Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Judge Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "State Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Smart Aggregator": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "State Manager": {
+      "main": [
+        [
+          {
+            "node": "Supervisor Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sate Extractor": {
+      "main": [
+        [
+          {
+            "node": "Supervisor Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG Tool (Working agents)": {
+      "ai_tool": [
+        [
+          {
+            "node": "Summarizer Agent",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "Quiz Agent",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "Flashcard Agent",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "Judge Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flash Card Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Flashcard Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Limit1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "state manager 2": {
+      "main": [
+        [
+          {
+            "node": "Supervisor Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Final Report File": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "state manager 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "RAG Knowledge Base (Insert)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "18d107a0-3ab6-4265-9c40-1ff622bf3774",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "79efdf933eb46572ba5a7ffc1ab8f3ebf3a30db10513c58bd1b3f3f4693e57b4"
+  },
+  "id": "wJp3tQKemY1Ja0pL",
+  "tags": []
+}
