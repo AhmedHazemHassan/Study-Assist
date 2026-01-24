@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Dash - Loading...</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #0f172a; font-family: sans-serif; }
+        canvas { display: block; touch-action: none; }
+        #ui {
+            position: absolute; top: 20px; left: 20px; color: white;
+            pointer-events: none; text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        .loading-text {
+            position: absolute; bottom: 40px; width: 100%; text-align: center;
+            color: #94a3b8; font-size: 1.1rem; animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <h1 class="text-2xl font-bold text-blue-400">STUDY DASH</h1>
+        <p class="text-sm opacity-80">Agents are generating your pack...</p>
+        <p class="mt-4 text-xl font-mono">Score: <span id="score">0</span></p>
+    </div>
+
+    <div class="loading-text">
+        AI agents are hard at work. This may take a moment.
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+
+        let score = 0;
+        let gameActive = true;
+
+        // Game objects
+        const player = {
+            x: 50,
+            y: 0,
+            width: 40,
+            height: 40,
+            color: '#3b82f6',
+            targetY: 0
+        };
+
+        const obstacles = [];
+        const particles = [];
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            player.y = canvas.height / 2;
+            player.targetY = player.y;
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Control
+        window.addEventListener('mousemove', (e) => {
+            player.targetY = e.clientY;
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            player.targetY = e.touches[0].clientY;
+            e.preventDefault();
+        }, { passive: false });
+
+        class Obstacle {
+            constructor() {
+                this.width = 40 + Math.random() * 60;
+                this.height = 40 + Math.random() * 60;
+                this.x = canvas.width + 100;
+                this.y = Math.random() * (canvas.height - this.height);
+                this.speed = 5 + (score / 100);
+                this.text = ["MATH", "BIO", "AI", "CODE", "DOCS"][Math.floor(Math.random() * 5)];
+            }
+
+            update() {
+                this.x -= this.speed;
+                // Collision
+                if (
+                    player.x < this.x + this.width &&
+                    player.x + player.width > this.x &&
+                    player.y < this.y + this.height &&
+                    player.y + player.height > this.y
+                ) {
+                    createExplosion(player.x, player.y);
+                    score = Math.max(0, score - 10);
+                    this.x = -200; // Remove
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = '#1e293b';
+                ctx.strokeStyle = '#64748b';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(this.x, this.y, this.width, this.height, 10);
+                ctx.fill();
+                ctx.stroke();
+                
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.text, this.x + this.width/2, this.y + this.height/2 + 5);
+            }
+        }
+
+        function createExplosion(x, y) {
+            for(let i=0; i<10; i++) {
+                particles.push({
+                    x, y,
+                    vx: (Math.random()-0.5)*10,
+                    vy: (Math.random()-0.5)*10,
+                    life: 1.0
+                });
+            }
+        }
+
+        function spawnObstacle() {
+            if (Math.random() < 0.05) obstacles.push(new Obstacle());
+        }
+
+        function animate() {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Background Stars
+            ctx.fillStyle = '#1e293b';
+            for(let i=0; i<50; i++) {
+                ctx.beginPath();
+                ctx.arc((Date.now() * 0.1 + i*100) % canvas.width, (i * 100) % canvas.height, 1, 0, Math.PI*2);
+                ctx.fill();
+            }
+
+            // Update Player
+            player.y += (player.targetY - player.y) * 0.1;
+            
+            // Draw Player (Ship)
+            ctx.fillStyle = player.color;
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y);
+            ctx.lineTo(player.x + 40, player.y + 20);
+            ctx.lineTo(player.x, player.y + 40);
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#3b82f6';
+
+            // Particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.02;
+                ctx.fillStyle = `rgba(59, 130, 246, ${p.life})`;
+                ctx.fillRect(p.x, p.y, 4, 4);
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            // Obstacles
+            spawnObstacle();
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const o = obstacles[i];
+                o.update();
+                o.draw();
+                if (o.x < -100) {
+                    obstacles.splice(i, 1);
+                    score += 5;
+                    scoreElement.innerText = score;
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        window.onload = animate;
+    </script>
+</body>
+</html>
