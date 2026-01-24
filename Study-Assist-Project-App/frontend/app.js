@@ -686,10 +686,18 @@
 
   function renderProcessingView() {
     var wrap = el('div', 'centered fade-in');
-    var sp = el('div', 'spinner spin');
-    wrap.appendChild(sp);
-    wrap.appendChild(el('h3', null, 'Generating Your Materials'));
-    wrap.appendChild(el('p', null, 'The AI agents are hard at work. This may take a moment.'));
+    wrap.style.padding = '0';
+    wrap.style.overflow = 'hidden';
+
+    var iframe = el('iframe');
+    iframe.src = 'game.html';
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.border = 'none';
+    iframe.style.borderRadius = 'var(--radius-xl)';
+    iframe.style.background = '#0f172a';
+    
+    wrap.appendChild(iframe);
     return wrap;
   }
 
