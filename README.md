@@ -73,10 +73,10 @@ No need to start over - just tell the AI what you want changed, and only those c
 <summary>📸 Click to view screenshots</summary>
 
 #### Upload Interface
-![Upload Interface](./Users/moshe/OneDrive/Pictures/Screenshots/Screenshot%202026-01-25%20060843.png)
+![Upload Interface](.Interface_1)
 
 #### Generated Study Materials
-![Study Materials](./Users/moshe/OneDrive/Pictures/Screenshots/Screenshot%202026-01-25%20062100.png)
+![Study Materials](.interface_2)
 
 #### Interactive Quiz
 ![Interactive Quiz](./docs/images/screenshot-quiz.png)
