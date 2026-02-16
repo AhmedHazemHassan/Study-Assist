@@ -61,32 +61,7 @@ No need to start over - just tell the AI what you want changed, and only those c
 
 ---
 
-## 🎬 Demo
 
-<p align="center">
-  <img src="docs/images/demo.gif" alt="StudyAssist Demo" width="800">
-</p>
-
-### Screenshots
-
-<details>
-<summary>📸 Click to view screenshots</summary>
-
-#### Upload Interface
-![Upload Interface](Interface 1)
-
-#### Generated Study Materials
-![Study Materials](.interface_2)
-
-#### Interactive Quiz
-![Interactive Quiz](./docs/images/screenshot-quiz.png)
-
-#### Flashcards
-![Flashcards](./docs/images/screenshot-flashcards.png)
-
-</details>
-
----
 
 ## 🛠️ Installation
 
@@ -306,51 +281,6 @@ var API_BASE = 'http://localhost:5000';
 2. Configure your LLM credentials (Ollama, OpenAI, or Anthropic)
 3. Set up the embedding model
 4. Activate the workflow for production use
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Here's how you can help:
-
-### Ways to Contribute
-
-- 🐛 **Report Bugs** - Open an issue describing the bug
-- 💡 **Suggest Features** - Share your ideas in discussions
-- 📝 **Improve Documentation** - Help make our docs better
-- 🔧 **Submit PRs** - Fix bugs or implement features
-
-### Development Setup
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Make your changes
-4. Run tests: `pytest tests/`
-5. Commit: `git commit -m 'Add amazing feature'`
-6. Push: `git push origin feature/amazing-feature`
-7. Open a Pull Request
-
-### Code Style
-
-- Python: Follow PEP 8
-- JavaScript: Use consistent formatting (no semicolons optional)
-- Commits: Use conventional commit messages
-
----
-
-## 📊 Roadmap
-
-- [x] Basic PDF processing and content generation
-- [x] Multi-agent orchestration with n8n
-- [x] Interactive quiz and flashcard UI
-- [x] Continuous feedback loop
-- [ ] Docker containerization
-- [ ] Cloud deployment guide (Vercel, Railway)
-- [ ] Support for more file formats (DOCX, PPTX)
-- [ ] Spaced repetition algorithm for flashcards
-- [ ] User accounts and saved study sessions
-- [ ] Mobile app (React Native)
-- [ ] Browser extension for quick captures
 
 ---
 
