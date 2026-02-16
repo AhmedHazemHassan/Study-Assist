@@ -73,7 +73,7 @@ No need to start over - just tell the AI what you want changed, and only those c
 <summary>📸 Click to view screenshots</summary>
 
 #### Upload Interface
-![Upload Interface](.Interface_1)
+![Upload Interface](Interface 1)
 
 #### Generated Study Materials
 ![Study Materials](.interface_2)
